@@ -8,7 +8,7 @@ import 'screens/home_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  FlutterForegroundTask.init(
+  await FlutterForegroundTask.init(
     androidNotificationOptions: AndroidNotificationOptions(
       channelId: 'qris_monitor_foreground',
       channelName: 'QRIS Monitor Foreground',
