@@ -12,10 +12,10 @@ class DevScreen extends StatefulWidget {
 }
 
 class _DevScreenState extends State<DevScreen> {
-  final List<String> _logs = [];
   final ScrollController _scrollController = ScrollController();
   String _serverUrl = '';
   String _token = '';
+  final List<String> _localLogs = [];
 
   @override
   void initState() {
@@ -30,30 +30,15 @@ class _DevScreenState extends State<DevScreen> {
       _serverUrl = url;
       _token = token;
     });
-    _addLog('SETTINGS LOADED');
-    _addLog('URL: $url');
-    _addLog('Token: ${token.isNotEmpty ? "***${token.substring(token.length - 3)}" : "(empty)"}');
+    _addLocalLog('SETTINGS LOADED | URL: $url | Token: ${token.isNotEmpty ? "***${token.substring(token.length - 3)}" : "(empty)"}');
   }
 
-  void _addLog(String message) {
+  void _addLocalLog(String message) {
     final now = DateTime.now();
     final timestamp = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}';
-    
     setState(() {
-      _logs.insert(0, '[$timestamp] $message');
-      if (_logs.length > 500) {
-        _logs.removeLast();
-      }
-    });
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          0,
-          duration: const Duration(milliseconds: 100),
-          curve: Curves.easeOut,
-        );
-      }
+      _localLogs.insert(0, '[$timestamp] $message');
+      if (_localLogs.length > 500) _localLogs.removeLast();
     });
   }
 
@@ -65,6 +50,9 @@ class _DevScreenState extends State<DevScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final wsLogs = context.watch<WebSocketService>().logs;
+    final allLogs = [..._localLogs, ...wsLogs];
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
@@ -80,14 +68,13 @@ class _DevScreenState extends State<DevScreen> {
             icon: const Icon(Icons.delete_outline),
             tooltip: 'Clear logs',
             onPressed: () {
-              setState(() => _logs.clear());
+              setState(() => _localLogs.clear());
             },
           ),
         ],
       ),
       body: Column(
         children: [
-          // Server info card
           Container(
             width: double.infinity,
             margin: const EdgeInsets.all(16),
@@ -108,11 +95,7 @@ class _DevScreenState extends State<DevScreen> {
               children: [
                 const Text(
                   'WebSocket Info',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1A2E),
-                  ),
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF1A1A2E)),
                 ),
                 const SizedBox(height: 8),
                 _infoRow('URL', _serverUrl),
@@ -126,59 +109,39 @@ class _DevScreenState extends State<DevScreen> {
               ],
             ),
           ),
-
-          // Test buttons
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: [
                 Expanded(
-                  child: _testButton(
-                    'Test JSON Parse',
-                    Colors.blueGrey,
-                    () {
-                      _addLog('=== TEST JSON PARSE ===');
-                      try {
-                        const testJson = '{"id":"test-123","type":"audio","text":"DANA QRIS Rp50000 masuk dari Budi","time":"2026-07-29T17:00:00+07:00","audio":"BASE64_WAV_PLACEHOLDER"}';
-                        final parsed = jsonDecode(testJson);
-                        _addLog('✅ Parse SUCCESS');
-                        _addLog('ID: ${parsed['id']}');
-                        _addLog('Type: ${parsed['type']}');
-                        _addLog('Text: ${parsed['text']}');
-                        _addLog('Time: ${parsed['time']}');
-                        _addLog('Audio: ${parsed['audio'] != null ? "PRESENT (${parsed['audio'].toString().length} chars)" : "MISSING"}');
-                      } catch (e) {
-                        _addLog('❌ Parse FAILED: $e');
-                      }
-                    },
-                  ),
+                  child: _testButton('Test JSON Parse', Colors.blueGrey, () {
+                    _addLocalLog('=== TEST JSON PARSE ===');
+                    try {
+                      const testJson = '{"id":"test-123","type":"audio","text":"DANA QRIS Rp50000 masuk dari Budi","time":"2026-07-29T17:00:00+07:00","audio":"BASE64_WAV_PLACEHOLDER"}';
+                      final parsed = jsonDecode(testJson);
+                      _addLocalLog('✅ Parse SUCCESS | ID: ${parsed['id']} | Type: ${parsed['type']} | Text: ${parsed['text']}');
+                    } catch (e) {
+                      _addLocalLog('❌ Parse FAILED: $e');
+                    }
+                  }),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: _testButton(
-                    'Test Audio Decode',
-                    Colors.blueGrey,
-                    () {
-                      _addLog('=== TEST AUDIO DECODE ===');
-                      try {
-                        final testBase64 = base64Encode([0x52, 0x49, 0x46, 0x46]);
-                        final decoded = base64Decode(testBase64);
-                        _addLog('✅ Decode SUCCESS');
-                        _addLog('Bytes length: ${decoded.length}');
-                        _addLog('First 4 bytes: ${decoded.map((b) => '0x${b.toRadixString(16).padLeft(2, '0')}').join(' ')}');
-                      } catch (e) {
-                        _addLog('❌ Decode FAILED: $e');
-                      }
-                    },
-                  ),
+                  child: _testButton('Test Audio Decode', Colors.blueGrey, () {
+                    _addLocalLog('=== TEST AUDIO DECODE ===');
+                    try {
+                      final testBase64 = base64Encode([0x52, 0x49, 0x46, 0x46]);
+                      final decoded = base64Decode(testBase64);
+                      _addLocalLog('✅ Decode SUCCESS | Bytes: ${decoded.length}');
+                    } catch (e) {
+                      _addLocalLog('❌ Decode FAILED: $e');
+                    }
+                  }),
                 ),
               ],
             ),
           ),
-
           const SizedBox(height: 12),
-
-          // Logs
           Expanded(
             child: Container(
               margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -194,56 +157,31 @@ class _DevScreenState extends State<DevScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'LOGS',
-                          style: TextStyle(
-                            color: Colors.white54,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 1,
-                          ),
-                        ),
-                        Text(
-                          '${_logs.length} entries',
-                          style: const TextStyle(
-                            color: Colors.white38,
-                            fontSize: 11,
-                          ),
-                        ),
+                        const Text('LOGS', style: TextStyle(color: Colors.white54, fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 1)),
+                        Text('${allLogs.length} entries', style: const TextStyle(color: Colors.white38, fontSize: 11)),
                       ],
                     ),
                   ),
                   Divider(color: Colors.white.withOpacity(0.1), height: 1),
                   Expanded(
-                    child: _logs.isEmpty
-                        ? const Center(
-                            child: Text(
-                              'No logs yet...',
-                              style: TextStyle(color: Colors.white24, fontSize: 14),
-                            ),
-                          )
+                    child: allLogs.isEmpty
+                        ? const Center(child: Text('No logs yet...', style: TextStyle(color: Colors.white24, fontSize: 14)))
                         : ListView.builder(
                             controller: _scrollController,
                             padding: const EdgeInsets.all(10),
-                            itemCount: _logs.length,
+                            itemCount: allLogs.length,
                             itemBuilder: (context, index) {
-                              final log = _logs[index];
+                              final log = allLogs[index];
                               Color logColor = Colors.white70;
                               if (log.contains('✅')) logColor = const Color(0xFF4CAF50);
                               if (log.contains('❌')) logColor = const Color(0xFFE74C3C);
                               if (log.contains('===')) logColor = const Color(0xFFFFA726);
+                              if (log.contains('⚠️')) logColor = const Color(0xFFFFA726);
+                              if (log.contains('RAW')) logColor = const Color(0xFF64B5F6);
 
                               return Padding(
                                 padding: const EdgeInsets.only(bottom: 4),
-                                child: Text(
-                                  log,
-                                  style: TextStyle(
-                                    color: logColor,
-                                    fontSize: 12,
-                                    fontFamily: 'monospace',
-                                    height: 1.4,
-                                  ),
-                                ),
+                                child: Text(log, style: TextStyle(color: logColor, fontSize: 12, fontFamily: 'monospace', height: 1.4)),
                               );
                             },
                           ),
@@ -252,7 +190,6 @@ class _DevScreenState extends State<DevScreen> {
               ),
             ),
           ),
-
           const SizedBox(height: 16),
         ],
       ),
@@ -264,24 +201,8 @@ class _DevScreenState extends State<DevScreen> {
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          Text(
-            '$label: ',
-            style: TextStyle(
-              fontSize: 13,
-              color: Colors.grey[500],
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF1A1A2E),
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
+          Text('$label: ', style: TextStyle(fontSize: 13, color: Colors.grey[500])),
+          Expanded(child: Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF1A1A2E)), overflow: TextOverflow.ellipsis)),
         ],
       ),
     );
@@ -297,15 +218,7 @@ class _DevScreenState extends State<DevScreen> {
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: color.withOpacity(0.3)),
         ),
-        child: Text(
-          label,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: color,
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+        child: Text(label, textAlign: TextAlign.center, style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.w600)),
       ),
     );
   }
