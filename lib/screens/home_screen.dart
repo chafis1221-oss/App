@@ -5,6 +5,7 @@ import '../services/foreground_service.dart';
 import '../utils/prefs_helper.dart';
 import 'history_screen.dart';
 import 'settings_screen.dart';
+import 'dev_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -15,6 +16,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   String _serverUrl = '';
+  int _tapCount = 0;
 
   @override
   void initState() {
@@ -53,14 +55,31 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void _onTitleTap() {
+    _tapCount++;
+    if (_tapCount >= 5) {
+      _tapCount = 0;
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const DevScreen()),
+      );
+    }
+    Future.delayed(const Duration(seconds: 2), () {
+      _tapCount = 0;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
-        title: const Text(
-          'QRIS Monitor',
-          style: TextStyle(fontWeight: FontWeight.w600),
+        title: GestureDetector(
+          onTap: _onTitleTap,
+          child: const Text(
+            'QRIS Monitor',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
         ),
         backgroundColor: Colors.white,
         foregroundColor: const Color(0xFF1A1A2E),
@@ -96,7 +115,6 @@ class _HomeScreenState extends State<HomeScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
               child: Column(
                 children: [
-                  // Status card
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(24),
@@ -194,7 +212,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
                   const Spacer(),
 
-                  // Action button
                   GestureDetector(
                     onTap: () async {
                       if (!service.isMonitoring) {
