@@ -30,6 +30,11 @@ jobs:
       - name: Create Flutter project structure
         run: flutter create --project-name qris_monitor --org com.qrismonitor .
 
+      - name: Fix Kotlin version and minSdk
+        run: |
+          sed -i 's/ext.kotlin_version = .*/ext.kotlin_version = "1.9.22"/' android/build.gradle
+          sed -i 's/minSdkVersion .*/minSdkVersion 23/' android/app/build.gradle
+
       - name: Get dependencies
         run: flutter pub get
 
