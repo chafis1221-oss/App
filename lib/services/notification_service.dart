@@ -29,7 +29,6 @@ class NotificationService {
       channelDescription: 'QRIS payment notifications',
       importance: Importance.high,
       priority: Priority.high,
-      color: Color(0xFF1A1A2E),
       icon: '@mipmap/ic_launcher',
     );
 

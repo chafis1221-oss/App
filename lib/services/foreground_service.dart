@@ -10,6 +10,7 @@ class ForegroundService {
       notificationTitle: 'QRIS Monitor Aktif',
       notificationText: 'Monitoring notifikasi QRIS',
       callback: _startCallback,
+      notificationButtons: [],
     );
   }
 
@@ -24,17 +25,17 @@ class ForegroundService {
 
 class MyTaskHandler extends TaskHandler {
   @override
-  Future<void> onStart(DateTime timestamp, TaskStarter starter) async {
+  Future<void> onStart(DateTime timestamp, SendPort? sendPort) async {
     // Service dimulai
   }
 
   @override
-  void onRepeatEvent(DateTime timestamp) {
+  void onRepeatEvent(DateTime timestamp, SendPort? sendPort) {
     // Tidak ada event periodik
   }
 
   @override
-  Future<void> onDestroy(DateTime timestamp) async {
+  Future<void> onDestroy(DateTime timestamp, SendPort? sendPort) async {
     // Cleanup
   }
 

@@ -1,3 +1,4 @@
+import 'dart:isolate';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
@@ -19,6 +20,11 @@ void main() async {
     iosNotificationOptions: const IOSNotificationOptions(
       showNotification: true,
       playSound: false,
+    ),
+    foregroundTaskOptions: ForegroundTaskOptions(
+      autoRunOnBoot: false,
+      allowWakeLock: false,
+      allowWifiLock: false,
     ),
   );
 
@@ -59,7 +65,6 @@ class QRISMonitorApp extends StatelessWidget {
           elevation: 0,
           centerTitle: true,
         ),
-        fontFamily: 'Inter',
         useMaterial3: true,
       ),
       home: const HomeScreen(),
