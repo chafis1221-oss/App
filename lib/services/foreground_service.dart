@@ -1,3 +1,4 @@
+import 'dart:isolate';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 
 class ForegroundService {
@@ -10,7 +11,6 @@ class ForegroundService {
       notificationTitle: 'QRIS Monitor Aktif',
       notificationText: 'Monitoring notifikasi QRIS',
       callback: _startCallback,
-      notificationButtons: [],
     );
   }
 
