@@ -20,6 +20,11 @@ void main() async {
       showNotification: true,
       playSound: false,
     ),
+    foregroundTaskOptions: ForegroundTaskOptions(
+      autoRunOnBoot: false,
+      allowWakeLock: false,
+      allowWifiLock: false,
+    ),
   );
 
   final notificationService = NotificationService();
