@@ -33,13 +33,11 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(
-          create: (_) {
-            final wsService = WebSocketService();
-            wsService.setNotificationService(notificationService);
-            return wsService;
-          },
-        ),
+        ChangeNotifierProvider(create: (_) {
+          final ws = WebSocketService();
+          ws.setNotificationService(notificationService);
+          return ws;
+        }),
         Provider.value(value: notificationService),
       ],
       child: const QRISMonitorApp(),
