@@ -1,24 +1,26 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
 class PrefsHelper {
-  static const String _wsUrlKey = 'websocket_url';
+  static const String _domainUrlKey = 'domain_url';
   static const String _tokenKey = 'websocket_token';
-  static const String _defaultLocalUrl = 'ws://192.168.1.17:8080/ws';
-  static const String _defaultToken = 's3cr3tWs';
 
-  static Future<String> getWebSocketUrl() async {
+  static const String localUrl = 'ws://192.168.1.17:8080/ws';
+  static const String defaultDomainUrl = 'wss://qris.chafis.my.id/ws';
+  static const String defaultToken = 's3cr3tWs';
+
+  static Future<String> getDomainUrl() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_wsUrlKey) ?? _defaultLocalUrl;
+    return prefs.getString(_domainUrlKey) ?? defaultDomainUrl;
   }
 
   static Future<String> getToken() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_tokenKey) ?? _defaultToken;
+    return prefs.getString(_tokenKey) ?? defaultToken;
   }
 
-  static Future<void> saveWebSocketUrl(String url) async {
+  static Future<void> saveDomainUrl(String url) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_wsUrlKey, url);
+    await prefs.setString(_domainUrlKey, url);
   }
 
   static Future<void> saveToken(String token) async {
