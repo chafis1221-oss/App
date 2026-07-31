@@ -18,6 +18,7 @@ class WebSocketService extends ChangeNotifier {
   WebSocketChannel? _channel;
   ConnectionStatus _status = ConnectionStatus.disconnected;
   Timer? _reconnectTimer;
+  Timer? _pingTimer;
   final AudioService _audioService = AudioService();
   NotificationService? _notificationService;
   bool _isMonitoring = false;
@@ -33,9 +34,7 @@ class WebSocketService extends ChangeNotifier {
     final now = DateTime.now();
     final timestamp = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}';
     _logs.insert(0, '[$timestamp] $message');
-    if (_logs.length > _maxLogs) {
-      _logs.removeLast();
-    }
+    if (_logs.length > _maxLogs) _logs.removeLast();
   }
 
   void setNotificationService(NotificationService service) {
@@ -48,16 +47,31 @@ class WebSocketService extends ChangeNotifier {
     _isMonitoring = true;
     notifyListeners();
     await _connect();
+    _startPing();
   }
 
   Future<void> stopMonitoring() async {
     _addLog('=== STOP MONITORING ===');
     _isMonitoring = false;
     _reconnectTimer?.cancel();
+    _pingTimer?.cancel();
     await _channel?.sink.close();
     _channel = null;
     _status = ConnectionStatus.disconnected;
     notifyListeners();
+  }
+
+  void _startPing() {
+    _pingTimer?.cancel();
+    _pingTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+      if (_channel != null && _status == ConnectionStatus.connected) {
+        try {
+          _channel!.sink.add('ping');
+        } catch (e) {
+          _handleDisconnect();
+        }
+      }
+    });
   }
 
   Future<void> _connect() async {
@@ -72,31 +86,29 @@ class WebSocketService extends ChangeNotifier {
       final uri = Uri.parse('$wsUrl?token=$token');
 
       _addLog('Connecting to: $uri');
-      _addLog('URL: $wsUrl');
-      _addLog('Token: ${token.isNotEmpty ? "***${token.substring(token.length - 3)}" : "(empty)"}');
 
       _channel = WebSocketChannel.connect(uri);
       _status = ConnectionStatus.connected;
-      _addLog('✅ CONNECTED');
+      _addLog('CONNECTED');
       notifyListeners();
 
       _channel!.stream.listen(
         (message) {
-          _addLog('RAW RECEIVED: ${message.toString().substring(0, message.toString().length > 200 ? 200 : message.toString().length)}...');
+          if (message == 'pong') return;
           _handleMessage(message);
         },
         onError: (error) {
-          _addLog('❌ WebSocket error: $error');
+          _addLog('WebSocket error: $error');
           _handleDisconnect();
         },
         onDone: () {
-          _addLog('WebSocket connection closed by server');
+          _addLog('Connection closed');
           _handleDisconnect();
         },
         cancelOnError: false,
       );
     } catch (e) {
-      _addLog('❌ Connection failed: $e');
+      _addLog('Connection failed: $e');
       _handleDisconnect();
     }
   }
@@ -104,7 +116,6 @@ class WebSocketService extends ChangeNotifier {
   void _handleMessage(dynamic message) {
     try {
       final Map<String, dynamic> data = jsonDecode(message);
-      _addLog('JSON parsed successfully');
 
       if (data['type'] == 'audio') {
         final String text = data['text'] ?? '';
@@ -112,30 +123,19 @@ class WebSocketService extends ChangeNotifier {
         final String id = data['id'] ?? '';
         final String? audioBase64 = data['audio'];
 
-        _addLog('Type: ${data['type']}');
-        _addLog('Text: $text');
-        _addLog('Time: $time');
-        _addLog('ID: $id');
-        _addLog('Audio: ${audioBase64 != null && audioBase64.isNotEmpty ? "PRESENT (${audioBase64.length} chars)" : "MISSING"}');
+        _addLog('Received: $text');
 
         final history = HistoryModel(id: id, text: text, time: time);
         HistoryManager.addHistory(history);
-        _addLog('✅ History saved');
 
         _notificationService?.showNotification('QRIS Monitor', text);
-        _addLog('✅ Notification shown');
 
         if (audioBase64 != null && audioBase64.isNotEmpty) {
           _audioService.playBase64Audio(audioBase64);
-          _addLog('✅ Audio playback started');
         }
-      } else {
-        _addLog('⚠️ Unknown message type: ${data['type']}');
-        _addLog('Full message: $message');
       }
     } catch (e) {
-      _addLog('❌ Parse error: $e');
-      _addLog('Raw message: $message');
+      _addLog('Parse error: $e');
     }
   }
 
@@ -149,10 +149,7 @@ class WebSocketService extends ChangeNotifier {
       _reconnectTimer?.cancel();
       _addLog('Reconnecting in 3 seconds...');
       _reconnectTimer = Timer(const Duration(seconds: 3), () {
-        if (_isMonitoring) {
-          _addLog('Attempting reconnect...');
-          _connect();
-        }
+        if (_isMonitoring) _connect();
       });
     }
   }

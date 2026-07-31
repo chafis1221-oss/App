@@ -8,9 +8,10 @@ class ForegroundService {
     }
 
     await FlutterForegroundTask.startService(
-      notificationTitle: 'QRIS Monitor Aktif',
-      notificationText: 'Monitoring notifikasi QRIS',
+      notificationTitle: 'QRIS Monitor',
+      notificationText: 'Memantau notifikasi QRIS...',
       callback: _startCallback,
+      notificationButtons: [],
     );
   }
 
@@ -25,32 +26,20 @@ class ForegroundService {
 
 class MyTaskHandler extends TaskHandler {
   @override
-  Future<void> onStart(DateTime timestamp, SendPort? sendPort) async {
-    // Service dimulai
-  }
+  Future<void> onStart(DateTime timestamp, SendPort? sendPort) async {}
 
   @override
-  void onRepeatEvent(DateTime timestamp, SendPort? sendPort) {
-    // Tidak ada event periodik
-  }
+  void onRepeatEvent(DateTime timestamp, SendPort? sendPort) {}
 
   @override
-  Future<void> onDestroy(DateTime timestamp, SendPort? sendPort) async {
-    // Cleanup
-  }
+  Future<void> onDestroy(DateTime timestamp, SendPort? sendPort) async {}
 
   @override
-  void onNotificationButtonPressed(String id) {
-    // Tidak ada tombol aksi
-  }
+  void onNotificationButtonPressed(String id) {}
 
   @override
-  void onNotificationPressed() {
-    // Buka aplikasi saat notifikasi ditekan
-  }
+  void onNotificationPressed() {}
 
   @override
-  void onNotificationDismissed() {
-    // Tidak ada aksi
-  }
+  void onNotificationDismissed() {}
 }

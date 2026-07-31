@@ -21,9 +21,9 @@ void main() async {
       playSound: false,
     ),
     foregroundTaskOptions: ForegroundTaskOptions(
-      autoRunOnBoot: false,
-      allowWakeLock: false,
-      allowWifiLock: false,
+      autoRunOnBoot: true,
+      allowWakeLock: true,
+      allowWifiLock: true,
     ),
   );
 
