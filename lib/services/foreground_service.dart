@@ -11,7 +11,6 @@ class ForegroundService {
       notificationTitle: 'QRIS Monitor',
       notificationText: 'Memantau notifikasi QRIS...',
       callback: _startCallback,
-      notificationButtons: [],
     );
   }
 
