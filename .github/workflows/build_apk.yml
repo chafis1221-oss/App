@@ -30,40 +30,74 @@ jobs:
       - name: Create Flutter project structure
         run: flutter create --project-name qris_monitor --org com.qrismonitor .
 
-      - name: Force Kotlin version
-        run: sed -i 's/id "org.jetbrains.kotlin.android" version "[^"]*"/id "org.jetbrains.kotlin.android" version "2.0.0"/' android/settings.gradle
+      - name: Force Kotlin version in settings.gradle
+        run: |
+          sed -i 's/id "org.jetbrains.kotlin.android" version "[^"]*"/id "org.jetbrains.kotlin.android" version "2.0.0"/' android/settings.gradle
 
       - name: Force minSdk to 23
-        run: sed -i 's/minSdkVersion .*/minSdkVersion 23/' android/app/build.gradle
-
-      - name: Create network security config
         run: |
-          mkdir -p android/app/src/main/res/xml
-          echo '<?xml version="1.0" encoding="utf-8"?>' > android/app/src/main/res/xml/network_security_config.xml
-          echo '<network-security-config>' >> android/app/src/main/res/xml/network_security_config.xml
-          echo '    <base-config cleartextTrafficPermitted="true">' >> android/app/src/main/res/xml/network_security_config.xml
-          echo '        <trust-anchors>' >> android/app/src/main/res/xml/network_security_config.xml
-          echo '            <certificates src="system" />' >> android/app/src/main/res/xml/network_security_config.xml
-          echo '        </trust-anchors>' >> android/app/src/main/res/xml/network_security_config.xml
-          echo '    </base-config>' >> android/app/src/main/res/xml/network_security_config.xml
-          echo '</network-security-config>' >> android/app/src/main/res/xml/network_security_config.xml
+          sed -i 's/minSdkVersion .*/minSdkVersion 23/' android/app/build.gradle
 
-      - name: Overwrite AndroidManifest
+      - name: Generate app icon from logo
         run: |
-          echo '<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.qrismonitor.qris_monitor">' > android/app/src/main/AndroidManifest.xml
-          echo '    <uses-permission android:name="android.permission.INTERNET"/>' >> android/app/src/main/AndroidManifest.xml
-          echo '    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>' >> android/app/src/main/AndroidManifest.xml
-          echo '    <application android:label="QRIS Monitor" android:name="${applicationName}" android:icon="@mipmap/ic_launcher" android:usesCleartextTraffic="true" android:networkSecurityConfig="@xml/network_security_config">' >> android/app/src/main/AndroidManifest.xml
-          echo '        <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTop" android:taskAffinity="" android:theme="@style/LaunchTheme" android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode" android:hardwareAccelerated="true" android:windowSoftInputMode="adjustResize">' >> android/app/src/main/AndroidManifest.xml
-          echo '            <meta-data android:name="io.flutter.embedding.android.NormalTheme" android:resource="@style/NormalTheme"/>' >> android/app/src/main/AndroidManifest.xml
-          echo '            <intent-filter>' >> android/app/src/main/AndroidManifest.xml
-          echo '                <action android:name="android.intent.action.MAIN"/>' >> android/app/src/main/AndroidManifest.xml
-          echo '                <category android:name="android.intent.category.LAUNCHER"/>' >> android/app/src/main/AndroidManifest.xml
-          echo '            </intent-filter>' >> android/app/src/main/AndroidManifest.xml
-          echo '        </activity>' >> android/app/src/main/AndroidManifest.xml
-          echo '        <meta-data android:name="flutterEmbedding" android:value="2"/>' >> android/app/src/main/AndroidManifest.xml
-          echo '    </application>' >> android/app/src/main/AndroidManifest.xml
-          echo '</manifest>' >> android/app/src/main/AndroidManifest.xml
+          sudo apt-get install -y imagemagick
+          mkdir -p android/app/src/main/res/mipmap-mdpi
+          mkdir -p android/app/src/main/res/mipmap-hdpi
+          mkdir -p android/app/src/main/res/mipmap-xhdpi
+          mkdir -p android/app/src/main/res/mipmap-xxhdpi
+          mkdir -p android/app/src/main/res/mipmap-xxxhdpi
+          convert logo.png -resize 48x48 android/app/src/main/res/mipmap-mdpi/ic_launcher.png
+          convert logo.png -resize 72x72 android/app/src/main/res/mipmap-hdpi/ic_launcher.png
+          convert logo.png -resize 96x96 android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
+          convert logo.png -resize 144x144 android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+          convert logo.png -resize 192x192 android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+
+      - name: Write AndroidManifest (hide from recents + cleartext)
+        run: |
+          cat > android/app/src/main/AndroidManifest.xml << 'MANIFEST'
+      <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+          package="com.qrismonitor.qris_monitor">
+
+          <uses-permission android:name="android.permission.INTERNET"/>
+          <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+          <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+          <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
+          <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+          <uses-permission android:name="android.permission.WAKE_LOCK"/>
+
+          <application
+              android:label="QRIS Monitor"
+              android:name="${applicationName}"
+              android:icon="@mipmap/ic_launcher"
+              android:usesCleartextTraffic="true">
+              <activity
+                  android:name=".MainActivity"
+                  android:exported="true"
+                  android:launchMode="singleTop"
+                  android:taskAffinity=""
+                  android:theme="@style/LaunchTheme"
+                  android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+                  android:hardwareAccelerated="true"
+                  android:windowSoftInputMode="adjustResize"
+                  android:excludeFromRecents="true">
+                  <meta-data
+                      android:name="io.flutter.embedding.android.NormalTheme"
+                      android:resource="@style/NormalTheme"/>
+                  <intent-filter>
+                      <action android:name="android.intent.action.MAIN"/>
+                      <category android:name="android.intent.category.LAUNCHER"/>
+                  </intent-filter>
+              </activity>
+              <meta-data
+                  android:name="flutterEmbedding"
+                  android:value="2"/>
+              <service
+                  android:name="com.pravera.flutter_foreground_task.service.ForegroundService"
+                  android:exported="false"
+                  android:foregroundServiceType="dataSync"/>
+          </application>
+      </manifest>
+      MANIFEST
 
       - name: Get dependencies
         run: flutter pub get
