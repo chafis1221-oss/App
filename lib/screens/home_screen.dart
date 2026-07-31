@@ -15,20 +15,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  String _activeUrl = '';
   int _tapCount = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadActiveUrl();
-  }
-
-  Future<void> _loadActiveUrl() async {
-    setState(() {
-      _activeUrl = '';
-    });
-  }
 
   Color _getStatusColor(ConnectionStatus status) {
     switch (status) {
@@ -82,8 +69,8 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: Consumer<WebSocketService>(
         builder: (context, service, child) {
+          final modeText = service.isLocal ? 'Local' : 'Domain';
           final displayUrl = service.activeUrl.isNotEmpty ? service.activeUrl : 'Menunggu koneksi...';
-          final modeText = service.mode == ServerMode.local ? 'Local' : 'Domain';
 
           return SafeArea(
             child: Padding(

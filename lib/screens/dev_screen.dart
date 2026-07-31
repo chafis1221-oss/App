@@ -58,7 +58,7 @@ class _DevScreenState extends State<DevScreen> {
                   _row('Domain', _domainUrl),
                   _row('Token', _token.isNotEmpty ? '***${_token.substring(_token.length - 3)}' : '(empty)'),
                   _row('Status', service.isMonitoring ? 'Monitoring' : 'Idle'),
-                  _row('Mode', service.mode == ServerMode.local ? 'Local' : 'Domain'),
+                  _row('Mode', service.isLocal ? 'Local' : 'Domain'),
                   _row('Active', service.activeUrl.isNotEmpty ? service.activeUrl : '-'),
                   _row('Connected', service.status == ConnectionStatus.connected ? 'Yes' : 'No'),
                 ],
