@@ -15,22 +15,19 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  String _serverUrl = '';
+  String _activeUrl = '';
   int _tapCount = 0;
 
   @override
   void initState() {
     super.initState();
-    _loadServerInfo();
+    _loadActiveUrl();
   }
 
-  Future<void> _loadServerInfo() async {
-    final url = await PrefsHelper.getWebSocketUrl();
-    if (mounted) {
-      setState(() {
-        _serverUrl = url;
-      });
-    }
+  Future<void> _loadActiveUrl() async {
+    setState(() {
+      _activeUrl = '';
+    });
   }
 
   Color _getStatusColor(ConnectionStatus status) {
@@ -59,14 +56,9 @@ class _HomeScreenState extends State<HomeScreen> {
     _tapCount++;
     if (_tapCount >= 5) {
       _tapCount = 0;
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const DevScreen()),
-      );
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const DevScreen()));
     }
-    Future.delayed(const Duration(seconds: 2), () {
-      _tapCount = 0;
-    });
+    Future.delayed(const Duration(seconds: 2), () => _tapCount = 0);
   }
 
   @override
@@ -76,40 +68,23 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: GestureDetector(
           onTap: _onTitleTap,
-          child: const Text(
-            'QRIS Monitor',
-            style: TextStyle(fontWeight: FontWeight.w600),
-          ),
+          child: const Text('QRIS Monitor', style: TextStyle(fontWeight: FontWeight.w600)),
         ),
         backgroundColor: Colors.white,
         foregroundColor: const Color(0xFF1A1A2E),
         elevation: 0,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.receipt_long_outlined),
-            tooltip: 'Riwayat',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const HistoryScreen()),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            tooltip: 'Pengaturan',
-            onPressed: () async {
-              await Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const SettingsScreen()),
-              );
-              _loadServerInfo();
-            },
-          ),
+          IconButton(icon: const Icon(Icons.receipt_long_outlined), tooltip: 'Riwayat', onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HistoryScreen()))),
+          IconButton(icon: const Icon(Icons.settings_outlined), tooltip: 'Pengaturan', onPressed: () async {
+            await Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
+          }),
         ],
       ),
       body: Consumer<WebSocketService>(
         builder: (context, service, child) {
+          final displayUrl = service.activeUrl.isNotEmpty ? service.activeUrl : 'Menunggu koneksi...';
+          final modeText = service.mode == ServerMode.local ? 'Local' : 'Domain';
+
           return SafeArea(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
@@ -118,100 +93,37 @@ class _HomeScreenState extends State<HomeScreen> {
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.04),
-                          blurRadius: 20,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
+                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 20, offset: const Offset(0, 4))]),
                     child: Column(
                       children: [
                         Container(
-                          width: 72,
-                          height: 72,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF1A1A2E).withOpacity(0.05),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.qr_code_2_rounded,
-                            size: 36,
-                            color: Color(0xFF1A1A2E),
-                          ),
+                          width: 72, height: 72,
+                          decoration: BoxDecoration(color: const Color(0xFF1A1A2E).withOpacity(0.05), shape: BoxShape.circle),
+                          child: const Icon(Icons.qr_code_2_rounded, size: 36, color: Color(0xFF1A1A2E)),
                         ),
                         const SizedBox(height: 16),
-                        const Text(
-                          'QRIS Monitor',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF1A1A2E),
-                            letterSpacing: -0.5,
-                          ),
-                        ),
+                        const Text('QRIS Monitor', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Color(0xFF1A1A2E))),
                         const SizedBox(height: 4),
-                        Text(
-                          'Pantau notifikasi pembayaran real-time',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[500],
-                          ),
-                        ),
+                        Text('Pantau notifikasi pembayaran real-time', style: TextStyle(fontSize: 14, color: Colors.grey[500])),
                         const SizedBox(height: 20),
                         Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF8F9FA),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          decoration: BoxDecoration(color: const Color(0xFFF8F9FA), borderRadius: BorderRadius.circular(12)),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Container(
-                                width: 10,
-                                height: 10,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: _getStatusColor(service.status),
-                                ),
-                              ),
+                              Container(width: 10, height: 10, decoration: BoxDecoration(shape: BoxShape.circle, color: _getStatusColor(service.status))),
                               const SizedBox(width: 10),
-                              Text(
-                                _getStatusText(service.status),
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w500,
-                                  color: Color(0xFF1A1A2E),
-                                ),
-                              ),
+                              Text('${_getStatusText(service.status)} ($modeText)', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: Color(0xFF1A1A2E))),
                             ],
                           ),
                         ),
-                        if (_serverUrl.isNotEmpty) ...[
-                          const SizedBox(height: 12),
-                          Text(
-                            _serverUrl,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[400],
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
+                        const SizedBox(height: 12),
+                        Text(displayUrl, style: TextStyle(fontSize: 12, color: Colors.grey[400]), textAlign: TextAlign.center),
                       ],
                     ),
                   ),
-
                   const Spacer(),
-
                   GestureDetector(
                     onTap: () async {
                       if (!service.isMonitoring) {
@@ -226,58 +138,22 @@ class _HomeScreenState extends State<HomeScreen> {
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(vertical: 20),
                       decoration: BoxDecoration(
-                        color: service.isMonitoring
-                            ? const Color(0xFFE74C3C)
-                            : const Color(0xFF1A1A2E),
+                        color: service.isMonitoring ? const Color(0xFFE74C3C) : const Color(0xFF1A1A2E),
                         borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: (service.isMonitoring
-                                    ? const Color(0xFFE74C3C)
-                                    : const Color(0xFF1A1A2E))
-                                .withOpacity(0.3),
-                            blurRadius: 16,
-                            offset: const Offset(0, 8),
-                          ),
-                        ],
+                        boxShadow: [BoxShadow(color: (service.isMonitoring ? const Color(0xFFE74C3C) : const Color(0xFF1A1A2E)).withOpacity(0.3), blurRadius: 16, offset: const Offset(0, 8))],
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(
-                            service.isMonitoring
-                                ? Icons.stop_circle_outlined
-                                : Icons.play_circle_outline,
-                            color: Colors.white,
-                            size: 24,
-                          ),
+                          Icon(service.isMonitoring ? Icons.stop_circle_outlined : Icons.play_circle_outline, color: Colors.white, size: 24),
                           const SizedBox(width: 10),
-                          Text(
-                            service.isMonitoring
-                                ? 'Hentikan Monitoring'
-                                : 'Mulai Monitoring',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 17,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
+                          Text(service.isMonitoring ? 'Hentikan Monitoring' : 'Mulai Monitoring', style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w600)),
                         ],
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 8),
-
-                  Text(
-                    service.isMonitoring
-                        ? 'Aplikasi berjalan di background'
-                        : 'Tekan untuk memulai',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey[400],
-                    ),
-                  ),
+                  Text(service.isMonitoring ? 'Aplikasi berjalan di background' : 'Tekan untuk memulai', style: TextStyle(fontSize: 13, color: Colors.grey[400])),
                 ],
               ),
             ),
