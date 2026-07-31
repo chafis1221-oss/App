@@ -9,23 +9,21 @@ import 'audio_service.dart';
 import 'notification_service.dart';
 
 enum ConnectionStatus { disconnected, connecting, connected }
-enum ServerMode { local, domain }
 
 class WebSocketService extends ChangeNotifier {
   WebSocketChannel? _channel;
   ConnectionStatus _status = ConnectionStatus.disconnected;
-  ServerMode _mode = ServerMode.local;
   Timer? _reconnectTimer;
   final AudioService _audioService = AudioService();
   NotificationService? _notificationService;
   bool _isMonitoring = false;
   String _activeUrl = '';
-  bool _isPlaying = false;
+  bool _useLocal = true;
 
   ConnectionStatus get status => _status;
-  ServerMode get mode => _mode;
   bool get isMonitoring => _isMonitoring;
   String get activeUrl => _activeUrl;
+  bool get isLocal => _useLocal;
 
   void setNotificationService(NotificationService service) {
     _notificationService = service;
@@ -35,65 +33,94 @@ class WebSocketService extends ChangeNotifier {
     if (_isMonitoring) return;
     _isMonitoring = true;
     notifyListeners();
-    await _tryConnect();
+    await _connect();
   }
 
   Future<void> stopMonitoring() async {
     _isMonitoring = false;
     _reconnectTimer?.cancel();
-    await _channel?.sink.close();
-    _channel = null;
+    await _closeChannel();
     _status = ConnectionStatus.disconnected;
     notifyListeners();
   }
 
-  Future<void> _tryConnect() async {
-    if (!_isMonitoring) return;
+  Future<void> _closeChannel() async {
     try { await _channel?.sink.close(); } catch (_) {}
     _channel = null;
-
-    _mode = ServerMode.local;
-    bool ok = await _connectTo(PrefsHelper.localUrl);
-    if (ok) return;
-
-    _mode = ServerMode.domain;
-    final domainUrl = await PrefsHelper.getDomainUrl();
-    ok = await _connectTo(domainUrl);
-    if (ok) return;
-
-    _scheduleReconnect();
   }
 
-  Future<bool> _connectTo(String wsUrl) async {
+  Future<void> _connect() async {
+    if (!_isMonitoring) return;
+    await _closeChannel();
+    _status = ConnectionStatus.connecting;
+    notifyListeners();
+
+    final success = _useLocal
+        ? await _tryConnect(PrefsHelper.localUrl)
+        : false;
+
+    if (!success) {
+      _useLocal = false;
+      final domainUrl = await PrefsHelper.getDomainUrl();
+      final domainSuccess = await _tryConnect(domainUrl);
+      if (!domainSuccess) {
+        _useLocal = true;
+        _status = ConnectionStatus.disconnected;
+        notifyListeners();
+        _scheduleReconnect();
+      }
+    }
+  }
+
+  Future<bool> _tryConnect(String wsUrl) async {
     try {
-      _status = ConnectionStatus.connecting;
-      notifyListeners();
       final token = await PrefsHelper.getToken();
-      _channel = WebSocketChannel.connect(Uri.parse('$wsUrl?token=$token'));
+      final uri = Uri.parse('$wsUrl?token=$token');
+
+      _channel = WebSocketChannel.connect(uri);
+      await _channel!.ready;
+
       _activeUrl = wsUrl;
       _status = ConnectionStatus.connected;
       notifyListeners();
 
       _channel!.stream.listen(
-        (msg) {
-          if (msg == 'pong' || _isPlaying) return;
-          _handleMessage(msg);
-        },
-        onError: (_) => _handleDisconnect(),
-        onDone: () => _handleDisconnect(),
+        _onData,
+        onError: (e) => _onError(e),
+        onDone: _onDone,
         cancelOnError: false,
       );
 
       return true;
-    } catch (_) {
-      _channel = null;
-      _status = ConnectionStatus.disconnected;
-      notifyListeners();
+    } catch (e) {
+      await _closeChannel();
       return false;
     }
   }
 
-  void _handleMessage(dynamic message) {
+  void _onData(dynamic message) {
+    if (message == 'pong') return;
+    _processMessage(message);
+  }
+
+  void _onError(dynamic error) {
+    _cleanup();
+  }
+
+  void _onDone() {
+    _cleanup();
+  }
+
+  void _cleanup() {
+    _channel = null;
+    if (_isMonitoring) {
+      _status = ConnectionStatus.disconnected;
+      notifyListeners();
+      _scheduleReconnect();
+    }
+  }
+
+  void _processMessage(dynamic message) {
     try {
       final data = jsonDecode(message);
       if (data['type'] != 'audio') return;
@@ -104,26 +131,23 @@ class WebSocketService extends ChangeNotifier {
       final audio = data['audio'];
 
       HistoryManager.addHistory(HistoryModel(id: id, text: text, time: time));
-      _notificationService?.showNotification('QRIS Monitor', text);
+
+      try {
+        _notificationService?.showNotification('QRIS Monitor', text);
+      } catch (_) {}
 
       if (audio != null && audio.isNotEmpty) {
-        _isPlaying = true;
-        _audioService.playBase64Audio(audio).then((_) => _isPlaying = false);
+        _audioService.playBase64Audio(audio);
       }
     } catch (_) {}
-  }
-
-  void _handleDisconnect() {
-    _channel = null;
-    _status = ConnectionStatus.disconnected;
-    notifyListeners();
-    _scheduleReconnect();
   }
 
   void _scheduleReconnect() {
     if (!_isMonitoring) return;
     _reconnectTimer?.cancel();
-    _reconnectTimer = Timer(const Duration(seconds: 5), _tryConnect);
+    _reconnectTimer = Timer(const Duration(seconds: 5), () {
+      if (_isMonitoring) _connect();
+    });
   }
 
   @override

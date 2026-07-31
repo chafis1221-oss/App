@@ -3,30 +3,36 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/history_model.dart';
 
 class HistoryManager {
-  static const String _historyKey = 'notification_history';
-  static const int _maxHistory = 50;
+  static const _key = 'notification_history';
+  static const _max = 50;
 
   static Future<List<HistoryModel>> getHistory() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String? jsonString = prefs.getString(_historyKey);
-    if (jsonString == null) return [];
-    final List<dynamic> jsonList = jsonDecode(jsonString);
-    return jsonList.map((json) => HistoryModel.fromJson(json)).toList();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final json = prefs.getString(_key);
+      if (json == null) return [];
+      final list = jsonDecode(json) as List;
+      return list.map((e) => HistoryModel.fromJson(e)).toList();
+    } catch (_) {
+      return [];
+    }
   }
 
   static Future<void> addHistory(HistoryModel history) async {
-    final prefs = await SharedPreferences.getInstance();
-    final List<HistoryModel> histories = await getHistory();
-    histories.insert(0, history);
-    if (histories.length > _maxHistory) {
-      histories.removeRange(_maxHistory, histories.length);
-    }
-    final String jsonString = jsonEncode(histories.map((h) => h.toJson()).toList());
-    await prefs.setString(_historyKey, jsonString);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final histories = await getHistory();
+      histories.insert(0, history);
+      if (histories.length > _max) histories.removeRange(_max, histories.length);
+      final json = jsonEncode(histories.map((e) => e.toJson()).toList());
+      await prefs.setString(_key, json);
+    } catch (_) {}
   }
 
   static Future<void> clearHistory() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_historyKey);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_key);
+    } catch (_) {}
   }
 }
