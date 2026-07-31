@@ -7,15 +7,14 @@ class AudioService {
 
   Future<void> playBase64Audio(String base64Audio) async {
     try {
-      final Uint8List bytes = base64Decode(base64Audio);
       await _audioPlayer.stop();
+      final Uint8List bytes = base64Decode(base64Audio);
       await _audioPlayer.play(BytesSource(bytes));
-    } catch (e) {
-      // Audio playback failed silently
-    }
+    } catch (_) {}
   }
 
   Future<void> dispose() async {
+    await _audioPlayer.stop();
     await _audioPlayer.dispose();
   }
 }
