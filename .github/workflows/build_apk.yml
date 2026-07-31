@@ -31,12 +31,10 @@ jobs:
         run: flutter create --project-name qris_monitor --org com.qrismonitor .
 
       - name: Force Kotlin version in settings.gradle
-        run: |
-          sed -i 's/id "org.jetbrains.kotlin.android" version "[^"]*"/id "org.jetbrains.kotlin.android" version "2.0.0"/' android/settings.gradle
+        run: sed -i 's/id "org.jetbrains.kotlin.android" version "[^"]*"/id "org.jetbrains.kotlin.android" version "2.0.0"/' android/settings.gradle
 
       - name: Force minSdk to 23
-        run: |
-          sed -i 's/minSdkVersion .*/minSdkVersion 23/' android/app/build.gradle
+        run: sed -i 's/minSdkVersion .*/minSdkVersion 23/' android/app/build.gradle
 
       - name: Generate app icon from logo
         run: |
@@ -52,7 +50,7 @@ jobs:
           convert logo.png -resize 144x144 android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
           convert logo.png -resize 192x192 android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
 
-      - name: Write AndroidManifest (hide from recents + cleartext)
+      - name: Write AndroidManifest
         run: |
           cat > android/app/src/main/AndroidManifest.xml << 'MANIFEST'
       <manifest xmlns:android="http://schemas.android.com/apk/res/android"
@@ -61,7 +59,6 @@ jobs:
           <uses-permission android:name="android.permission.INTERNET"/>
           <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
           <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
-          <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
           <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
           <uses-permission android:name="android.permission.WAKE_LOCK"/>
 
@@ -88,9 +85,7 @@ jobs:
                       <category android:name="android.intent.category.LAUNCHER"/>
                   </intent-filter>
               </activity>
-              <meta-data
-                  android:name="flutterEmbedding"
-                  android:value="2"/>
+              <meta-data android:name="flutterEmbedding" android:value="2"/>
               <service
                   android:name="com.pravera.flutter_foreground_task.service.ForegroundService"
                   android:exported="false"
