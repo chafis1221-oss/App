@@ -33,7 +33,7 @@ class WebSocketService extends ChangeNotifier {
     if (_isMonitoring) return;
     _isMonitoring = true;
     notifyListeners();
-    await _connect();
+    _connect();
   }
 
   Future<void> stopMonitoring() async {
@@ -49,27 +49,26 @@ class WebSocketService extends ChangeNotifier {
     _channel = null;
   }
 
-  Future<void> _connect() async {
+  void _connect() {
     if (!_isMonitoring) return;
-    await _closeChannel();
+    _closeChannel();
     _status = ConnectionStatus.connecting;
     notifyListeners();
 
-    final success = _useLocal
-        ? await _tryConnect(PrefsHelper.localUrl)
-        : false;
-
-    if (!success) {
+    _tryConnect(PrefsHelper.localUrl).then((success) {
+      if (success) return;
       _useLocal = false;
-      final domainUrl = await PrefsHelper.getDomainUrl();
-      final domainSuccess = await _tryConnect(domainUrl);
-      if (!domainSuccess) {
-        _useLocal = true;
-        _status = ConnectionStatus.disconnected;
-        notifyListeners();
-        _scheduleReconnect();
-      }
-    }
+      PrefsHelper.getDomainUrl().then((domainUrl) {
+        _tryConnect(domainUrl).then((domainSuccess) {
+          if (!domainSuccess) {
+            _useLocal = true;
+            _status = ConnectionStatus.disconnected;
+            notifyListeners();
+            _scheduleReconnect();
+          }
+        });
+      });
+    });
   }
 
   Future<bool> _tryConnect(String wsUrl) async {
@@ -85,9 +84,12 @@ class WebSocketService extends ChangeNotifier {
       notifyListeners();
 
       _channel!.stream.listen(
-        _onData,
-        onError: (e) => _onError(e),
-        onDone: _onDone,
+        (msg) {
+          if (msg == 'pong') return;
+          _processMessage(msg);
+        },
+        onError: (_) => _cleanup(),
+        onDone: _cleanup,
         cancelOnError: false,
       );
 
@@ -96,19 +98,6 @@ class WebSocketService extends ChangeNotifier {
       await _closeChannel();
       return false;
     }
-  }
-
-  void _onData(dynamic message) {
-    if (message == 'pong') return;
-    _processMessage(message);
-  }
-
-  void _onError(dynamic error) {
-    _cleanup();
-  }
-
-  void _onDone() {
-    _cleanup();
   }
 
   void _cleanup() {
@@ -145,9 +134,7 @@ class WebSocketService extends ChangeNotifier {
   void _scheduleReconnect() {
     if (!_isMonitoring) return;
     _reconnectTimer?.cancel();
-    _reconnectTimer = Timer(const Duration(seconds: 5), () {
-      if (_isMonitoring) _connect();
-    });
+    _reconnectTimer = Timer(const Duration(seconds: 5), _connect);
   }
 
   @override
