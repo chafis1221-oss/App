@@ -29,7 +29,6 @@ class _LogsScreenState extends State<LogsScreen> with SingleTickerProviderStateM
     setState(() => _loadingServer = true);
     try {
       final domainUrl = await PrefsHelper.getDomainUrl();
-      // Coba local dulu
       String baseUrl = 'http://192.168.1.17:8080';
       try {
         final response = await http.get(Uri.parse('$baseUrl/logs/access')).timeout(const Duration(seconds: 3));
@@ -78,12 +77,9 @@ class _LogsScreenState extends State<LogsScreen> with SingleTickerProviderStateM
       body: TabBarView(
         controller: _tabController,
         children: [
-          // Tab 1: Server Log
           _loadingServer
               ? const Center(child: CircularProgressIndicator(color: Color(0xFF1A1A2E)))
               : _buildLogList(_serverLogs, () => _fetchServerLogs()),
-
-          // Tab 2: App Log
           Consumer<WebSocketService>(
             builder: (context, service, child) {
               final appLogs = service.logs;
@@ -135,9 +131,9 @@ class _LogsScreenState extends State<LogsScreen> with SingleTickerProviderStateM
               itemBuilder: (context, index) {
                 final log = logs[index];
                 Color color = Colors.white70;
-                if (log.contains('Error') || log.contains('error') || log.contains('❌')) color = const Color(0xFFE74C3C);
-                if (log.contains('broadcast') || log.contains('sent') || log.contains('✅')) color = const Color(0xFF4CAF50);
-                if (log.contains('SKIPPED') || log.contains('⚠️')) color = const Color(0xFFFFA726);
+                if (log.contains('Error') || log.contains('error')) color = const Color(0xFFE74C3C);
+                if (log.contains('broadcast') || log.contains('sent') || log.contains('Connected')) color = const Color(0xFF4CAF50);
+                if (log.contains('SKIPPED')) color = const Color(0xFFFFA726);
                 if (log.contains('Received')) color = const Color(0xFF64B5F6);
 
                 return Padding(

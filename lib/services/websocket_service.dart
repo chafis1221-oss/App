@@ -20,10 +20,23 @@ class WebSocketService extends ChangeNotifier {
   String _activeUrl = '';
   bool _useLocal = true;
 
+  // Log ringan untuk tampilan App Log
+  final List<String> _logs = [];
+  static const int _maxLogs = 50;
+
   ConnectionStatus get status => _status;
   bool get isMonitoring => _isMonitoring;
   String get activeUrl => _activeUrl;
   bool get isLocal => _useLocal;
+  List<String> get logs => List.unmodifiable(_logs);
+
+  void _addLog(String message) {
+    final now = DateTime.now();
+    final ts = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}';
+    _logs.insert(0, '[$ts] $message');
+    if (_logs.length > _maxLogs) _logs.removeLast();
+    notifyListeners();
+  }
 
   void setNotificationService(NotificationService service) {
     _notificationService = service;
@@ -32,6 +45,7 @@ class WebSocketService extends ChangeNotifier {
   Future<void> startMonitoring() async {
     if (_isMonitoring) return;
     _isMonitoring = true;
+    _addLog('Start Monitoring');
     notifyListeners();
     _connect();
   }
@@ -41,6 +55,7 @@ class WebSocketService extends ChangeNotifier {
     _reconnectTimer?.cancel();
     await _closeChannel();
     _status = ConnectionStatus.disconnected;
+    _addLog('Stop Monitoring');
     notifyListeners();
   }
 
@@ -81,6 +96,7 @@ class WebSocketService extends ChangeNotifier {
 
       _activeUrl = wsUrl;
       _status = ConnectionStatus.connected;
+      _addLog('Connected: $wsUrl');
       notifyListeners();
 
       _channel!.stream.listen(
@@ -88,13 +104,20 @@ class WebSocketService extends ChangeNotifier {
           if (msg == 'pong') return;
           _processMessage(msg);
         },
-        onError: (_) => _cleanup(),
-        onDone: _cleanup,
+        onError: (e) {
+          _addLog('Error: $e');
+          _cleanup();
+        },
+        onDone: () {
+          _addLog('Disconnected');
+          _cleanup();
+        },
         cancelOnError: false,
       );
 
       return true;
     } catch (e) {
+      _addLog('Failed: $wsUrl');
       await _closeChannel();
       return false;
     }
@@ -128,6 +151,7 @@ class WebSocketService extends ChangeNotifier {
       if (audio != null && audio.isNotEmpty) {
         _audioService.playBase64Audio(audio);
       }
+      _addLog('Received: $text');
     } catch (_) {}
   }
 
