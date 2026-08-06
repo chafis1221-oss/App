@@ -18,7 +18,6 @@ class WebSocketService extends ChangeNotifier {
   NotificationService? _notificationService;
   bool _isMonitoring = false;
   String _activeUrl = '';
-  bool _useLocal = true;
 
   final List<String> _logs = [];
   static const int _maxLogs = 50;
@@ -26,7 +25,6 @@ class WebSocketService extends ChangeNotifier {
   ConnectionStatus get status => _status;
   bool get isMonitoring => _isMonitoring;
   String get activeUrl => _activeUrl;
-  bool get isLocal => _useLocal;
   List<String> get logs => List.unmodifiable(_logs);
 
   void _addLog(String msg) {
@@ -67,18 +65,12 @@ class WebSocketService extends ChangeNotifier {
     notifyListeners();
     _addLog('Connecting...');
 
-    bool ok = await _tryConnect(PrefsHelper.localUrl);
+    final ok = await _tryConnect(PrefsHelper.localUrl);
     if (ok) return;
 
-    _useLocal = false;
-    final domain = await PrefsHelper.getDomainUrl();
-    ok = await _tryConnect(domain);
-    if (ok) return;
-
-    _useLocal = true;
     _status = ConnectionStatus.disconnected;
     notifyListeners();
-    _addLog('Failed all');
+    _addLog('Failed');
     _scheduleReconnect();
   }
 
@@ -89,7 +81,7 @@ class WebSocketService extends ChangeNotifier {
       await _channel!.ready;
       _activeUrl = url;
       _status = ConnectionStatus.connected;
-      _addLog('CONNECTED $url');
+      _addLog('CONNECTED');
       notifyListeners();
 
       _channel!.stream.listen(
@@ -98,7 +90,7 @@ class WebSocketService extends ChangeNotifier {
           _processMessage(msg);
         },
         onError: (e) {
-          _addLog('ERR: $e');
+          _addLog('ERR');
           _cleanup();
         },
         onDone: () {
@@ -109,7 +101,7 @@ class WebSocketService extends ChangeNotifier {
       );
       return true;
     } catch (e) {
-      _addLog('FAIL: $url');
+      _addLog('FAIL');
       await _close();
       return false;
     }
@@ -125,7 +117,7 @@ class WebSocketService extends ChangeNotifier {
       final audio = d['audio'];
 
       HistoryManager.addHistory(HistoryModel(id: id, text: text, time: time));
-      _addLog('RECV: $text');
+      _addLog('RECV');
       _notificationService?.showNotification('QRIS Monitor', text);
       if (audio != null && audio.isNotEmpty) _audioService.playBase64Audio(audio);
     } catch (_) {}
