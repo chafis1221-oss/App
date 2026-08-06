@@ -60,17 +60,17 @@ class WebSocketService extends ChangeNotifier {
   Future<void> _connect() async {
     if (!_isMonitoring) return;
     await _close();
-
     _status = ConnectionStatus.connecting;
     notifyListeners();
     _addLog('Connecting...');
 
-    final ok = await _tryConnect(PrefsHelper.localUrl);
+    final url = await PrefsHelper.getWebSocketUrl();
+    final ok = await _tryConnect(url);
     if (ok) return;
 
     _status = ConnectionStatus.disconnected;
+    _addLog('FAIL');
     notifyListeners();
-    _addLog('Failed');
     _scheduleReconnect();
   }
 
@@ -89,19 +89,12 @@ class WebSocketService extends ChangeNotifier {
           if (msg == 'pong') return;
           _processMessage(msg);
         },
-        onError: (e) {
-          _addLog('ERR');
-          _cleanup();
-        },
-        onDone: () {
-          _addLog('CLOSED');
-          _cleanup();
-        },
+        onError: (_) => _cleanup(),
+        onDone: () => _cleanup(),
         cancelOnError: false,
       );
       return true;
-    } catch (e) {
-      _addLog('FAIL');
+    } catch (_) {
       await _close();
       return false;
     }
